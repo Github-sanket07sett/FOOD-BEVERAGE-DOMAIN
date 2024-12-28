@@ -126,7 +126,7 @@ from fact_survey_responses
 group by Typical_consumption_situations
 order by count(Respondent_ID) desc;
 
-#What factors influence respondents' purchase decisions, such as price range and limited edition packaging?
+#What factors influence respondents purchase decisions, such as price range and limited edition packaging?
 select Price_range, count(Respondent_ID) 
 from fact_survey_responses
 group by Price_range
@@ -144,3 +144,97 @@ select Reasons_preventing_trying,count(Respondent_ID)
 from fact_survey_responses
 group by Reasons_preventing_trying
 order by count(Respondent_ID) desc;
+
+# Respondent Count by Age Group and Gender
+WITH AgeGenderCount AS (
+    SELECT 
+        Age,
+        Gender,
+        COUNT(*) AS Respondent_Count
+    FROM dim_repondents
+    GROUP BY Age, Gender
+)
+SELECT 
+    Age,
+    Gender,
+    Respondent_Count,
+    RANK() OVER (PARTITION BY Age ORDER BY Respondent_Count DESC) AS Rank_within_Age
+FROM AgeGenderCount;
+
+
+#Rank Cities by Average Taste Experience
+WITH CityRanking AS (
+    SELECT 
+        c.City,
+        AVG(sr.Taste_experience) AS Avg_Taste_Experience
+    FROM dim_repondents r
+    JOIN dim_cities c ON r.City_ID = c.City_ID
+    JOIN fact_survey_responses sr ON r.Respondent_ID = sr.Respondent_ID
+    GROUP BY c.City
+)
+SELECT 
+    City,
+    Avg_Taste_Experience,
+    RANK() OVER (ORDER BY Avg_Taste_Experience DESC) AS Rnk
+FROM CityRanking;
+
+
+
+#Average Taste Experience by City Tier
+WITH CityTierExperience AS (
+    SELECT 
+        r.City_ID,
+        c.Tier,
+        sr.Taste_experience
+    FROM dim_repondents r
+    JOIN dim_cities c ON r.City_ID = c.City_ID
+    JOIN fact_survey_responses sr ON r.Respondent_ID = sr.Respondent_ID
+)
+SELECT 
+    Tier,
+    AVG(Taste_experience) AS Avg_Taste_Experience
+FROM CityTierExperience
+GROUP BY Tier;
+
+
+
+#Brand Awareness Percentage for Codex
+SELECT 
+    concat(round(COUNT(CASE WHEN Heard_before = 'Yes' THEN 1 END) * 100.0 / COUNT(*),2), '%') AS Brand_Awareness_Percentage
+FROM fact_survey_responses;
+
+
+#Market Penetration
+SELECT 
+    concat(round(COUNT(CASE WHEN Tried_before = 'Yes' THEN 1 END) * 100.0 / COUNT(*),2), '%') AS MarketPercentage_Percentage
+FROM fact_survey_responses;
+
+
+#Reasons for Consumption
+SELECT 
+    Consume_reason,
+    concat(round(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM fact_survey_responses),2), '%')AS Reason_Percentage
+FROM fact_survey_responses
+GROUP BY Consume_reason;
+
+
+#Consume Frequency for Codex
+SELECT 
+    Consume_frequency,
+    concat(round(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM fact_survey_responses),2),'%') AS Frequency_Percentage
+FROM fact_survey_responses
+Where Current_brands='CodeX'
+GROUP BY Consume_frequency
+;
+
+
+# Packaging_Percentage
+SELECT 
+    Packaging_preference,
+   concat( round(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM fact_survey_responses),2),'%') AS Packaging_Percentage
+FROM fact_survey_responses
+GROUP BY Packaging_preference;
+
+
+
+
